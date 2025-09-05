@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Balloon Game – Adding & Subtracting Fractions</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(-45deg, #89f7fe, #66a6ff, #ff9a9e, #fad0c4);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: rgba(0,0,0,.3);
+    padding: 10px;
+    border-radius: 10px;
+    margin: 10px;
+    flex-wrap: wrap;
+    width: 95%;
+    color: white;
+  }
+  .badge {
+    background: rgba(255,255,255,.3);
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .question {
+    font-size: 1.8em;
+    font-weight: bold;
+    text-align: center;
+    flex-basis: 100%;
+    margin-top: 5px;
+  }
+  #gameArea {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+  }
+  .balloon {
+    position: absolute;
+    width: 90px;
+    height: 120px;
+    background: radial-gradient(circle at 30% 30%, #ff7676, #e60000);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4em;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,0,0,.3);
+    transition: transform 0.2s;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .fraction {
+    display: inline-block;
+    text-align: center;
+  }
+  .fraction .top { border-bottom: 2px solid white; display: block; }
+  .fraction .bottom { display: block; }
+  .balloon:active { transform: scale(1.2); }
+  .controls {
+    margin: 10px;
+    display: flex;
+    gap: 10px;
+  }
+  button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 10px;
+    background: #1976d2;
+    color: white;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover { background: #125ea8; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="badge">Score: <span id="score">0</span></div>
+    <div class="badge">Round: <span id="round">0</span>/20</div>
+    <div class="question" id="question">Press Restart to begin</div>
+  </div>
+  <div id="gameArea"></div>
+  <div class="controls">
+    <button onclick="restartGame()">Restart</button>
+    <button onclick="pauseGame()">Pause</button>
+    <button onclick="resumeGame()">Resume</button>
+    <button onclick="stopGame()">Stop</button>
+  </div>
+
+<script>
+let score = 0, round = 0, gameInterval, paused = false;
+const gameArea = document.getElementById("gameArea");
+const scoreEl = document.getElementById("score");
+const roundEl = document.getElementById("round");
+const questionEl = document.getElementById("question");
+
+let correctAnswer = null;
+let activeBalloons = [];
+
+function makeFractionHTML(n, d) {
+  return `<div class="fraction"><span class="top">${n}</span><span class="bottom">${d}</span></div>`;
+}
+
+function generateFractionQuestion() {
+  const denominators = [10, 100, 1000];
+  const denom = denominators[Math.floor(Math.random() * denominators.length)];
+
+  // Ensure numerators stay ≤ 500
+  const num1 = Math.floor(Math.random() * Math.min(denom, 500));
+  const num2 = Math.floor(Math.random() * Math.min(denom, 500));
+
+  const operators = ["+", "-"];
+  const op = operators[Math.floor(Math.random() * operators.length)];
+
+  let questionHTML = `${makeFractionHTML(num1, denom)} ${op} ${makeFractionHTML(num2, denom)}`;
+  let ans = op === "+" ? num1 + num2 : num1 - num2;
+
+  // Clamp answer to max 500 for numerator
+  ans = Math.max(-500, Math.min(ans, 500));
+
+  correctAnswer = {num: ans, denom: denom};
+  return questionHTML;
+}
+
+function spawnBalloons() {
+  const answers = new Set([`${correctAnswer.num}/${correctAnswer.denom}`]);
+
+  while (answers.size < 4) {
+    const denom = correctAnswer.denom;
+    const baseNum = correctAnswer.num;
+    let rand = baseNum + (Math.floor(Math.random() * 21) - 10); // variation
+    rand = Math.max(-500, Math.min(rand, 500)); // keep within -500 to 500
+    answers.add(`${rand}/${denom}`);
+  }
+
+  const shuffled = Array.from(answers).sort(() => Math.random() - 0.5);
+
+  gameArea.innerHTML = "";
+  activeBalloons = [];
+
+  shuffled.forEach((ans, i) => {
+    const balloon = document.createElement("div");
+    balloon.className = "balloon";
+    const [n, d] = ans.split("/");
+    balloon.innerHTML = makeFractionHTML(n, d);
+    const spacing = gameArea.clientWidth / 5;
+    balloon.style.left = (spacing * (i+1) - 50) + "px";
+    balloon.style.bottom = "-120px";
+    balloon.dataset.answer = ans;
+    balloon.addEventListener("click", () => checkAnswer(ans, balloon));
+    gameArea.appendChild(balloon);
+    activeBalloons.push(balloon);
+  });
+}
+
+function checkAnswer(ans, balloon) {
+  if (ans === `${correctAnswer.num}/${correctAnswer.denom}`) {
+    score++;
+    scoreEl.textContent = score;
+    balloon.style.background = "radial-gradient(circle at 30% 30%, #4caf50, #2e7d32)";
+    setTimeout(nextRound, 800);
+  } else {
+    balloon.style.background = "radial-gradient(circle at 30% 30%, #999, #555)";
+  }
+}
+
+function nextRound() {
+  if (round >= 20) {
+    questionEl.innerHTML = `Game Over! Final Score: ${score}/20`;
+    stopGame();
+    return;
+  }
+  round++;
+  roundEl.textContent = round;
+  const q = generateFractionQuestion();
+  questionEl.innerHTML = `Solve: ${q}`;
+  spawnBalloons();
+}
+
+function floatBalloons() {
+  activeBalloons.forEach(balloon => {
+    let bottom = parseFloat(balloon.style.bottom);
+    bottom += 1.5;
+    balloon.style.bottom = bottom + "px";
+    if (bottom > gameArea.clientHeight + 150) {
+      balloon.remove();
+    }
+  });
+}
+
+function restartGame() {
+  score = 0; round = 0;
+  scoreEl.textContent = score;
+  roundEl.textContent = round;
+  questionEl.textContent = "Game started!";
+  clearInterval(gameInterval);
+  nextRound();
+  gameInterval = setInterval(() => { if (!paused) floatBalloons(); }, 40);
+}
+
+function pauseGame() { paused = true; }
+function resumeGame() { paused = false; }
+function stopGame() {
+  clearInterval(gameInterval);
+  gameArea.innerHTML = "";
+}
+</script>
+</body>
+</html>
