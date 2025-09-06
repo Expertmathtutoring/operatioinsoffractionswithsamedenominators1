@@ -149,18 +149,15 @@ function generateFractionQuestion() {
   const denominators = [10, 100, 1000];
   const denom = denominators[Math.floor(Math.random() * denominators.length)];
 
-  // Ensure numerators stay ≤ 500
-  const num1 = Math.floor(Math.random() * Math.min(denom, 500));
-  const num2 = Math.floor(Math.random() * Math.min(denom, 500));
+  // Numerators unrestricted
+  const num1 = Math.floor(Math.random() * 501); // up to 500
+  const num2 = Math.floor(Math.random() * 501); // up to 500
 
   const operators = ["+", "-"];
   const op = operators[Math.floor(Math.random() * operators.length)];
 
   let questionHTML = `${makeFractionHTML(num1, denom)} ${op} ${makeFractionHTML(num2, denom)}`;
   let ans = op === "+" ? num1 + num2 : num1 - num2;
-
-  // Clamp answer
-  ans = Math.max(-500, Math.min(ans, 500));
 
   correctAnswer = {num: ans, denom: denom};
   return questionHTML;
@@ -172,8 +169,7 @@ function spawnBalloons() {
   while (answers.size < 4) {
     const denom = correctAnswer.denom;
     const baseNum = correctAnswer.num;
-    let rand = baseNum + (Math.floor(Math.random() * 21) - 10); // variation
-    rand = Math.max(-500, Math.min(rand, 500));
+    let rand = baseNum + (Math.floor(Math.random() * 41) - 20); // more variation
     answers.add(`${rand}/${denom}`);
   }
 
@@ -274,5 +270,6 @@ function stopGame() {
 </script>
 </body>
 </html>
+
 
 
