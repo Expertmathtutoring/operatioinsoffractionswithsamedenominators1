@@ -96,6 +96,21 @@
     cursor: pointer;
   }
   button:hover { background: #125ea8; }
+
+  /* Firework sparks */
+  .spark {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.9;
+    animation: explode 1.6s forwards;
+  }
+  @keyframes explode {
+    from { transform: translate(0,0) scale(1); opacity:1; }
+    to { transform: translate(var(--x), var(--y)) scale(0.2); opacity:0; }
+  }
 </style>
 </head>
 <body>
@@ -122,6 +137,10 @@ const questionEl = document.getElementById("question");
 let correctAnswer = null;
 let activeBalloons = [];
 
+// Sounds
+const cheer = new Audio("https://actions.google.com/sounds/v1/human_voices/applause.ogg");
+const fail = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+
 function makeFractionHTML(n, d) {
   return `<div class="fraction"><span class="top">${n}</span><span class="bottom">${d}</span></div>`;
 }
@@ -140,7 +159,7 @@ function generateFractionQuestion() {
   let questionHTML = `${makeFractionHTML(num1, denom)} ${op} ${makeFractionHTML(num2, denom)}`;
   let ans = op === "+" ? num1 + num2 : num1 - num2;
 
-  // Clamp answer to max 500 for numerator
+  // Clamp answer
   ans = Math.max(-500, Math.min(ans, 500));
 
   correctAnswer = {num: ans, denom: denom};
@@ -154,7 +173,7 @@ function spawnBalloons() {
     const denom = correctAnswer.denom;
     const baseNum = correctAnswer.num;
     let rand = baseNum + (Math.floor(Math.random() * 21) - 10); // variation
-    rand = Math.max(-500, Math.min(rand, 500)); // keep within -500 to 500
+    rand = Math.max(-500, Math.min(rand, 500));
     answers.add(`${rand}/${denom}`);
   }
 
@@ -183,15 +202,38 @@ function checkAnswer(ans, balloon) {
     score++;
     scoreEl.textContent = score;
     balloon.style.background = "radial-gradient(circle at 30% 30%, #4caf50, #2e7d32)";
-    setTimeout(nextRound, 800);
+    cheer.currentTime = 0;
+    cheer.play();
+    launchFireworks(balloon);
+    setTimeout(nextRound, 1000);
   } else {
+    fail.play();
     balloon.style.background = "radial-gradient(circle at 30% 30%, #999, #555)";
+  }
+}
+
+function launchFireworks(target) {
+  const rect = target.getBoundingClientRect();
+  const centerX = rect.left + rect.width/2;
+  const centerY = rect.top + rect.height/2;
+  for (let i=0; i<80; i++) {
+    const spark = document.createElement("div");
+    spark.className = "spark";
+    const angle = Math.random()*2*Math.PI;
+    const dist = Math.random()*180+40;
+    spark.style.setProperty("--x", `${Math.cos(angle)*dist}px`);
+    spark.style.setProperty("--y", `${Math.sin(angle)*dist}px`);
+    spark.style.left = centerX+"px";
+    spark.style.top = centerY+"px";
+    spark.style.background = `hsl(${Math.random()*360},100%,60%)`;
+    document.body.appendChild(spark);
+    setTimeout(()=>spark.remove(),1600);
   }
 }
 
 function nextRound() {
   if (round >= 20) {
-    questionEl.innerHTML = `Game Over! Final Score: ${score}/20`;
+    questionEl.innerHTML = `🎉 Game Over! Final Score: ${score}/20`;
     stopGame();
     return;
   }
@@ -232,3 +274,5 @@ function stopGame() {
 </script>
 </body>
 </html>
+
+
